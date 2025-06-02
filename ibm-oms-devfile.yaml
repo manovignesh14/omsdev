@@ -48,6 +48,8 @@ components:
       image: manovignesh/oms-base
       mountSources: true
       memoryLimit: 4096Mi
+      command: ['sleep']
+      args: ['infinity']
       endpoints:
         - name: Store_Dev_Server
           targetPort: 4500
@@ -59,6 +61,8 @@ components:
       image: manovignesh/oms-base
       mountSources: true
       memoryLimit: 3072Mi
+      command: ['sleep']
+      args: ['infinity']
       endpoints:
         - name: Sterling_Application_Manager
           targetPort: 9080
@@ -92,32 +96,36 @@ components:
 commands:
   - id: build-java-extensions
     exec:
+      label: Build Java Extensions
       component: oms-extenstion
       commandLine: gradle build
-      workingDir: ${CHE_PROJECTS_ROOT}/oms-extension-sample
+      workingDir: ${PROJECTS_ROOT}/oms-extension
       group:
         kind: build
 
   - id: build-resource-jar
     exec:
+      label: Build Resource JAR
       component: oms-runtime
       commandLine: ./setupfiles.sh && ./deployer.sh -t resourcejar
-      workingDir: ${OMS_RUNTIME}/bin
+      workingDir: ${PROJECTS_ROOT}/oms-extension/bin
       group:
         kind: build
 
   - id: build-entity-jar
     exec:
+      label: Build Entity JAR
       component: oms-runtime
       commandLine: ./setupfiles.sh && ./dbverify.sh && ./deployer.sh -t entitydeployer
-      workingDir: ${OMS_RUNTIME}/bin
+      workingDir: ${PROJECTS_ROOT}/oms-extension/bin
       group:
         kind: build
 
   - id: build-ear
     exec:
+      label: Build EAR
       component: oms-runtime
-      commandLine: >-
+      commandLine: >
         read -p 'WAR Files [smcfs,sbc,sma]: ' warFiles; warFiles=${warFiles:-'smcfs,sbc,sma'};
         read -p 'Dev Mode [false]: ' devMode; devMode=${devMode:-'false'};
         read -p 'Additional Build Arguments: ' addnArgs;
@@ -125,58 +133,64 @@ commands:
         ./buildear.sh -Ddevmode=$devMode -Dappserver=websphere -Dapitester=true
         -Dwebsphere-profile=liberty -Dwarfiles=$warFiles -Dearfile=smcfs.ear
         -Dnowebservice=true -Dnoejb=true $addnArgs
-      workingDir: ${OMS_RUNTIME}
+      workingDir: ${PROJECTS_ROOT}/oms-extension
       group:
         kind: build
 
-  - id: start-agent-server
+  - id: start-agent
     exec:
+      label: Start Agent/Integration Server
       component: oms-runtime
-      commandLine: >-
+      commandLine: >
         read -p 'Server Name: ' name; read -p 'JVM Options: ' jvmOptions;
         echo "Starting server $name $jvmOptions"
-      workingDir: ${OMS_RUNTIME}
+      workingDir: ${PROJECTS_ROOT}/oms-extension
       group:
         kind: run
 
-  - id: stop-agent-server
+  - id: stop-agent
     exec:
+      label: Stop Agent/Integration Server
       component: oms-runtime
-      commandLine: >-
+      commandLine: >
         read -p 'Server Name: ' name; echo "Stopping server $name"
-      workingDir: ${OMS_RUNTIME}
+      workingDir: ${PROJECTS_ROOT}/oms-extension
       group:
         kind: run
 
   - id: deploy-ear
     exec:
+      label: Deploy EAR
       component: oms-appserver
-      commandLine: >-
+      commandLine: >
         rm -rf /config/dropins/*.ear && cp runtime/external_deployments/*.ear /config/dropins/
-      workingDir: ${CHE_PROJECTS_ROOT}
+      workingDir: ${PROJECTS_ROOT}
       group:
         kind: deploy
 
   - id: start-app-server
     exec:
+      label: Start Application Server
       component: oms-appserver
       commandLine: /opt/ibm/wlp/bin/server run defaultServer
-      workingDir: ${CHE_PROJECTS_ROOT}
+      workingDir: ${PROJECTS_ROOT}
       group:
         kind: run
 
   - id: stop-app-server
     exec:
+      label: Stop Application Server
       component: oms-appserver
       commandLine: /opt/ibm/wlp/bin/server stop defaultServer
-      workingDir: ${CHE_PROJECTS_ROOT}
+      workingDir: ${PROJECTS_ROOT}
       group:
         kind: run
 
   - id: launch-store-dev
     exec:
+      label: Launch Store Development Server
       component: oms-runtime
       commandLine: ng serve --host 0.0.0.0 --disable-host-check
-      workingDir: ${CHE_PROJECTS_ROOT}/store-dev
+      workingDir: ${PROJECTS_ROOT}/store-dev
       group:
         kind: run
