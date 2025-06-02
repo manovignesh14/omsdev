@@ -1,93 +1,72 @@
-schemaVersion: 2.3.0
+schemaVersion: 2.2.0
 metadata:
   name: oms-dev-
-attributes:
-  persistVolumes: 'false'
+  attributes:
+    persistVolumes: 'false'
 projects:
   - name: oms-extension
     git:
       remotes:
-        origin: https://github.com/priyajithc/oms-extension-sample.git
+        origin: 'https://github.com/priyajithc/oms-extension-sample.git'
 components:
-  - name: java-plugin
+  - name: redhat-java-plugin
     plugin:
       id: redhat/java/latest
       preferences:
         java.server.launchMode: Standard
-
-  - name: oms-extenstion
+  
+  - name: oms-extension
     container:
-      image: quay.io/eclipse/che-java11-gradle:7.21.1
-      mountSources: true
+      image: 'quay.io/eclipse/che-java11-gradle:7.21.1'
       memoryLimit: 1024Mi
+      mountSources: true
       env:
         - name: GRADLE_USER_HOME
           value: /home/gradle/.gradle
         - name: JAVA_OPTS
-          value: >-
-            -XX:MaxRAMPercentage=50 -XX:+UseParallelGC -XX:MinHeapFreeRatio=10
-            -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4
-            -XX:AdaptiveSizePolicyWeight=90
-            -Dsun.zip.disableMemoryMapping=true -Xms20m
-            -Djava.security.egd=file:/dev/./urandom
+          value: '-XX:MaxRAMPercentage=50 -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xms20m -Djava.security.egd=file:/dev/./urandom'
         - name: JAVA_TOOL_OPTIONS
-          value: >-
-            -XX:MaxRAMPercentage=50 -XX:+UseParallelGC -XX:MinHeapFreeRatio=10
-            -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4
-            -XX:AdaptiveSizePolicyWeight=90
-            -Dsun.zip.disableMemoryMapping=true -Xms20m
-            -Djava.security.egd=file:/dev/./urandom
+          value: '-XX:MaxRAMPercentage=50 -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xms20m -Djava.security.egd=file:/dev/./urandom'
         - name: HOME
           value: /home/gradle
       volumeMounts:
         - name: gradle
           path: /home/gradle/.gradle
-
+  
   - name: oms-runtime
     container:
-      image: manovignesh/oms-base
-      mountSources: true
+      image: 'manovignesh/oms-base'
       memoryLimit: 4096Mi
-      command: ['sleep']
-      args: ['infinity']
+      mountSources: true
       endpoints:
         - name: Store_Dev_Server
           targetPort: 4500
-          attributes:
-            path: /
-
+          path: /
+  
   - name: oms-appserver
     container:
-      image: manovignesh/oms-base
-      mountSources: true
+      image: 'manovignesh/oms-base'
       memoryLimit: 3072Mi
-      command: ['sleep']
-      args: ['infinity']
+      mountSources: true
       endpoints:
         - name: Sterling_Application_Manager
           targetPort: 9080
-          attributes:
-            path: /smcfs
+          path: /smcfs
         - name: Sterling_Business_Center
           targetPort: 9080
-          attributes:
-            path: /sbc
+          path: /sbc
         - name: Sterling_Call_Center
           targetPort: 9080
-          attributes:
-            path: /isccs
+          path: /isccs
         - name: Sterling_Store
           targetPort: 9080
-          attributes:
-            path: /wsc
+          path: /wsc
         - name: Sterling_Store2
           targetPort: 9080
-          attributes:
-            path: /isf
+          path: /isf
         - name: API_Tester
           targetPort: 9080
-          attributes:
-            path: /smcfs/yfshttpapi/ibmapitester.jsp
+          path: /smcfs/yfshttpapi/ibmapitester.jsp
 
   - name: gradle
     volume:
@@ -97,100 +76,69 @@ commands:
   - id: build-java-extensions
     exec:
       label: Build Java Extensions
-      component: oms-extenstion
+      component: oms-extension
+      workingDir: '${PROJECTS_ROOT}/oms-extension-sample'
       commandLine: gradle build
-      workingDir: ${PROJECTS_ROOT}/oms-extension
-      group:
-        kind: build
 
   - id: build-resource-jar
     exec:
       label: Build Resource JAR
       component: oms-runtime
-      commandLine: ./setupfiles.sh && ./deployer.sh -t resourcejar
-      workingDir: ${PROJECTS_ROOT}/oms-extension/bin
-      group:
-        kind: build
+      workingDir: '${OMS_RUNTIME}/bin'
+      commandLine: './setupfiles.sh && ./deployer.sh -t resourcejar'
 
   - id: build-entity-jar
     exec:
       label: Build Entity JAR
       component: oms-runtime
-      commandLine: ./setupfiles.sh && ./dbverify.sh && ./deployer.sh -t entitydeployer
-      workingDir: ${PROJECTS_ROOT}/oms-extension/bin
-      group:
-        kind: build
+      workingDir: '${OMS_RUNTIME}/bin'
+      commandLine: './setupfiles.sh && ./dbverify.sh &&  ./deployer.sh -t entitydeployer'
 
   - id: build-ear
     exec:
       label: Build EAR
       component: oms-runtime
-      commandLine: >
-        read -p 'WAR Files [smcfs,sbc,sma]: ' warFiles; warFiles=${warFiles:-'smcfs,sbc,sma'};
-        read -p 'Dev Mode [false]: ' devMode; devMode=${devMode:-'false'};
-        read -p 'Additional Build Arguments: ' addnArgs;
-        cd bin && ./setupfiles.sh && ./deployer.sh -t resourcejargen &&
-        ./buildear.sh -Ddevmode=$devMode -Dappserver=websphere -Dapitester=true
-        -Dwebsphere-profile=liberty -Dwarfiles=$warFiles -Dearfile=smcfs.ear
-        -Dnowebservice=true -Dnoejb=true $addnArgs
-      workingDir: ${PROJECTS_ROOT}/oms-extension
-      group:
-        kind: build
+      workingDir: '${OMS_RUNTIME}'
+      commandLine: 'read -p ''WAR Files [smcfs,sbc,sma]: '' warFiles; warFiles=${warFiles:-''smcfs,sbc,sma''}; read -p ''Dev Mode [false]: '' devMode; devMode=${devMode:-''false''}; read -p ''Additional Build Arguments: '' addnArgs; cd bin && ./setupfiles.sh && ./deployer.sh -t resourcejargen && ./buildear.sh -Ddevmode=$devMode -Dappserver=websphere -Dapitester=true -Dwebsphere-profile=liberty -Dwarfiles=$warFiles -Dearfile=smcfs.ear -Dnowebservice=true -Dnoejb=true $addnArgs'
 
-  - id: start-agent
+  - id: start-agent-integration-server
     exec:
       label: Start Agent/Integration Server
       component: oms-runtime
-      commandLine: >
-        read -p 'Server Name: ' name; read -p 'JVM Options: ' jvmOptions;
-        echo "Starting server $name $jvmOptions"
-      workingDir: ${PROJECTS_ROOT}/oms-extension
-      group:
-        kind: run
+      workingDir: '${OMS_RUNTIME}'
+      commandLine: 'read -p ''Server Name: '' name; read -p ''JVM Options: '' jvmOptions; echo "Starting server $name $jvmOptions"'
 
-  - id: stop-agent
+  - id: stop-agent-integration-server
     exec:
       label: Stop Agent/Integration Server
       component: oms-runtime
-      commandLine: >
-        read -p 'Server Name: ' name; echo "Stopping server $name"
-      workingDir: ${PROJECTS_ROOT}/oms-extension
-      group:
-        kind: run
+      workingDir: '${OMS_RUNTIME}'
+      commandLine: 'read -p ''Server Name: '' name; echo "Stopping server $name"'
 
   - id: deploy-ear
     exec:
       label: Deploy EAR
       component: oms-appserver
-      commandLine: >
-        rm -rf /config/dropins/*.ear && cp runtime/external_deployments/*.ear /config/dropins/
-      workingDir: ${PROJECTS_ROOT}
-      group:
-        kind: deploy
+      workingDir: '${PROJECTS_ROOT}'
+      commandLine: rm -rf /config/dropins/*.ear && cp runtime/external_deployments/*.ear /config/dropins/
 
-  - id: start-app-server
+  - id: start-application-server
     exec:
       label: Start Application Server
       component: oms-appserver
+      workingDir: '${PROJECTS_ROOT}'
       commandLine: /opt/ibm/wlp/bin/server run defaultServer
-      workingDir: ${PROJECTS_ROOT}
-      group:
-        kind: run
 
-  - id: stop-app-server
+  - id: stop-application-server
     exec:
       label: Stop Application Server
       component: oms-appserver
+      workingDir: '${PROJECTS_ROOT}'
       commandLine: /opt/ibm/wlp/bin/server stop defaultServer
-      workingDir: ${PROJECTS_ROOT}
-      group:
-        kind: run
 
-  - id: launch-store-dev
+  - id: launch-store-dev-server
     exec:
       label: Launch Store Development Server
       component: oms-runtime
+      workingDir: '${PROJECTS_ROOT}/store-dev'
       commandLine: ng serve --host 0.0.0.0 --disable-host-check
-      workingDir: ${PROJECTS_ROOT}/store-dev
-      group:
-        kind: run
